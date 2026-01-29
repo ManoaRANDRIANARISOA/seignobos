@@ -79,6 +79,8 @@ $columns_order = json_decode($_GET['columns_order'] ?? json_encode($cols), true)
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= htmlspecialchars($project['project_name']) ?></title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <style>
 :root{
@@ -89,18 +91,39 @@ $columns_order = json_decode($_GET['columns_order'] ?? json_encode($cols), true)
 
 /* GLOBAL */
 body{
-    font-family: "Segoe UI", Arial, sans-serif;
+    font-family: 'Poppins', sans-serif;
     background: var(--bg);
     margin:0;
     padding:20px;
+    color: #333;
 }
-h1{ color:var(--orange); margin-bottom:5px; }
-p{ color:#444; }
+h1{ color:var(--orange); margin-bottom:5px; font-weight: 600; }
+p{ color:#555; }
+
+/* BACK BUTTON */
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: #555;
+    background: #fff;
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-weight: 500;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+    transition: 0.3s;
+}
+.back-btn:hover {
+    color: var(--orange);
+    transform: translateX(-5px);
+}
 
 /* CARD */
 .card{
     background:#fff;
-    padding:20px;
+    padding:25px;
     border-radius:14px;
     box-shadow:0 6px 20px rgba(0,0,0,.08);
     margin-bottom:20px;
@@ -111,22 +134,30 @@ p{ color:#444; }
     display:flex;
     flex-wrap:wrap;
     gap:10px;
+    align-items: center;
 }
 .search-bar input{
-    padding:10px;
+    padding:10px 15px;
     border-radius:8px;
     border:1px solid #ccc;
-    min-width:220px;
+    min-width:250px;
+    font-family: 'Poppins', sans-serif;
 }
 .search-bar button{
-    background:var(--orange-light);
+    background: linear-gradient(135deg, var(--orange-light), var(--orange));
     color:#fff;
     border:none;
     border-radius:8px;
-    padding:10px 16px;
+    padding:10px 20px;
     cursor:pointer;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: 0.3s;
 }
-.search-bar button:hover{ background:var(--orange); }
+.search-bar button:hover{ opacity: 0.9; transform: translateY(-2px); }
 
 /* ACTIONS */
 .actions{
@@ -136,21 +167,32 @@ p{ color:#444; }
     margin:15px 0;
 }
 .actions button{
-    background:var(--orange-light);
-    color:#fff;
-    border:none;
+    background: #fff;
+    border: 1px solid #ddd;
+    color: #555;
     border-radius:8px;
-    padding:8px 14px;
+    padding:8px 16px;
     cursor:pointer;
+    font-family: 'Poppins', sans-serif;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: 0.3s;
 }
-.actions button:last-child{
-    background:#333;
+.actions button:hover{ background: #f9f9f9; color: var(--orange); }
+
+.actions button[type="submit"]{
+    background: linear-gradient(135deg, var(--orange-light), var(--orange));
+    color: #fff;
+    border: none;
+    font-weight: 500;
 }
-.actions button:hover{ opacity:.9 }
+.actions button[type="submit"]:hover{ opacity: 0.9; color: #fff; }
 
 /* TABLE */
 .table-wrapper{
     overflow-x:auto;
+    border-radius: 12px;
 }
 table{
     width:100%;
@@ -158,20 +200,21 @@ table{
     background:#fff;
 }
 th,td{
-    padding:10px;
-    border:1px solid #ddd;
-    font-size:13px;
+    padding:12px 15px;
+    border:1px solid #eee;
+    font-size:14px;
 }
 th{
-    background:var(--orange-light);
+    background: linear-gradient(135deg, var(--orange-light), var(--orange));
     color:#fff;
     position:sticky;
     top:0;
+    z-index: 10;
 }
 th .th-content{
     display:flex;
     flex-direction:column;
-    gap:6px;
+    gap:8px;
 }
 th .controls{
     display:flex;
@@ -179,13 +222,16 @@ th .controls{
     flex-wrap:wrap;
 }
 .orderBtn{
-    background:rgba(255,255,255,.3);
+    background:rgba(255,255,255,.2);
     color:#fff;
     text-decoration:none;
-    padding:2px 6px;
+    padding:4px 6px;
     border-radius:4px;
-    font-size:11px;
+    font-size:12px;
+    transition: 0.2s;
 }
+.orderBtn:hover { background: rgba(255,255,255,0.4); }
+
 td img{ max-width:120px; border-radius:6px }
 
 /* MOBILE */
@@ -198,6 +244,8 @@ td img{ max-width:120px; border-radius:6px }
 
 <body>
 
+<a href="dashboard.php" class="back-btn"><i class="fas fa-arrow-left"></i> Retour au tableau de bord</a>
+
 <div class="card">
     <h1><?= htmlspecialchars($project['project_name']) ?></h1>
     <p><?= nl2br(htmlspecialchars($project['project_description'])) ?></p>
@@ -206,8 +254,8 @@ td img{ max-width:120px; border-radius:6px }
 <div class="card">
 <form method="get" class="search-bar">
     <input type="hidden" name="project_id" value="<?= $project_id ?>">
-    <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="🔍 Recherche">
-    <button>Rechercher</button>
+    <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Rechercher...">
+    <button type="submit"><i class="fas fa-search"></i> Rechercher</button>
 </form>
 </div>
 
@@ -216,16 +264,16 @@ td img{ max-width:120px; border-radius:6px }
 <input type="hidden" name="columns_order" id="columns_order" value='<?= htmlspecialchars(json_encode($columns_order)) ?>'>
 
 <div class="actions">
-    <button type="button" id="selectAllColsBtn">Colonnes</button>
-    <button type="button" id="selectAllRowsBtn">Lignes</button>
-    <button type="submit">📝 Générer Word</button>
+    <button type="button" id="selectAllColsBtn"><i class="fas fa-columns"></i> Colonnes</button>
+    <button type="button" id="selectAllRowsBtn"><i class="fas fa-list-ol"></i> Lignes</button>
+    <button type="submit"><i class="fas fa-file-word"></i> Générer Word</button>
 </div>
 
 <div class="table-wrapper">
 <table id="dataTable">
 <thead>
 <tr>
-<th>✔</th>
+<th><i class="fas fa-check-square"></i></th>
 <?php foreach ($columns_order as $c): ?>
 <th>
 <div class="th-content">
@@ -234,11 +282,11 @@ td img{ max-width:120px; border-radius:6px }
         <?= strtoupper(htmlspecialchars($c)) ?>
     </label>
     <div class="controls">
-        <a href="#" class="moveLeft orderBtn" data-col="<?= $c ?>">←</a>
-        <a href="#" class="moveRight orderBtn" data-col="<?= $c ?>">→</a>
-        <input type="color" name="color_<?= htmlspecialchars($c) ?>" value="#000000">
-        <a href="?project_id=<?= $project_id ?>&order_by=<?= $c ?>&order_dir=ASC" class="orderBtn">▲</a>
-        <a href="?project_id=<?= $project_id ?>&order_by=<?= $c ?>&order_dir=DESC" class="orderBtn">▼</a>
+        <a href="#" class="moveLeft orderBtn" data-col="<?= $c ?>"><i class="fas fa-arrow-left"></i></a>
+        <a href="#" class="moveRight orderBtn" data-col="<?= $c ?>"><i class="fas fa-arrow-right"></i></a>
+        <input type="color" name="color_<?= htmlspecialchars($c) ?>" value="#000000" title="Changer la couleur">
+        <a href="?project_id=<?= $project_id ?>&order_by=<?= $c ?>&order_dir=ASC" class="orderBtn" title="Trier Asc"><i class="fas fa-sort-up"></i></a>
+        <a href="?project_id=<?= $project_id ?>&order_by=<?= $c ?>&order_dir=DESC" class="orderBtn" title="Trier Desc"><i class="fas fa-sort-down"></i></a>
     </div>
 </div>
 </th>
