@@ -1,0 +1,123 @@
+/* ==============================
+   FORMULAIRES DYNAMIQUES
+   ============================== */
+
+.form-section {
+  margin-bottom: 30px;
+}
+
+.field-card {
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+/* ==============================
+   FIELD HEADER
+   ============================== */
+
+.field-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.field-header h4 {
+  margin: 0;
+  font-size: 16px;
+}
+
+/* ==============================
+   REMOVE FIELD BUTTON
+   ============================== */
+
+.remove-field {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: white;
+  text-align: center;
+  line-height: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.remove-field:hover {
+  filter: brightness(1.1);
+}
+
+/* ==============================
+   OPTIONS (checkbox / radio)
+   ============================== */
+
+.options-group {
+  margin-top: 10px;
+}
+
+.options-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+
+/* ==============================
+   IA / AUTRE
+   ============================== */
+
+.ai-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.other-input {
+  margin-top: 10px;
+}
+
+/* ==============================
+   FILE INPUT
+   ============================== */
+
+input[type="file"] {
+  border: none;
+  padding: 6px 0;
+}
+
+/* ==============================
+   SUBMIT ZONE
+   ============================== */
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+/* ==============================
+   RESPONSIVE
+   ============================== */
+
+@media (max-width: 768px) {
+
+  .field-card {
+    padding: 15px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+}

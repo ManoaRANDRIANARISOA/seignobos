@@ -1,0 +1,10 @@
+config.php
+vendor/
+uploads/*
+!uploads/.gitkeep
+.DS_Store
+*.log
+.vscode/
+.idea/
+Thumbs.db
+*.docx
