@@ -15,12 +15,21 @@ $columns_order = $_POST['columns_order'] ?? null;
 $selected_rows = $_POST['selected_rows'] ?? [];
 $selected_columns = $_POST['columns'] ?? [];
 
-if (!$project_id || !$columns_order || empty($selected_rows) || empty($selected_columns)) {
-    die("Sélection insuffisante.");
+if (!$project_id || !$columns_order) {
+    die("Données du projet manquantes.");
 }
 
 $project_id = intval($project_id);
 $table_name = "project_" . $project_id;
+
+// Vérification stricte : il faut au moins une ligne et une colonne
+if (empty($selected_columns)) {
+    die("Aucune colonne sélectionnée pour l'exportation.");
+}
+
+if (empty($selected_rows)) {
+    die("Aucune ligne sélectionnée. Veuillez cocher les éléments à exporter dans le tableau.");
+}
 
 // Décoder l'ordre des colonnes
 $columns_order = json_decode($columns_order, true);

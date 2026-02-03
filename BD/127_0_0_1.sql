@@ -168,6 +168,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `email` varchar(191) NOT NULL,
   `role` enum('admin','chercheur','assistant','user') DEFAULT 'user',
   `password` varchar(255) NOT NULL,
+  `reset_code` varchar(10) DEFAULT NULL,
+  `reset_expires_at` datetime DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `unique_username` (`username`),
@@ -179,8 +181,8 @@ CREATE TABLE IF NOT EXISTS `users` (
 --
 
 INSERT INTO `users` (`id`, `fullname`, `username`, `email`, `role`, `password`, `created_at`) VALUES
-(3, 'RAN', 'Mia', 'mialisoa3@gmail.com', 'admin', '$2y$10$NjYiKR83xPJiE4m/uq51kenscOlO46wJbXBwr/.dWCqKXK.rIElNO', '2026-01-14 07:07:44'),
-(6, 'COO', 'Bee', 'alienor.grandemange@hotmail.fr', 'assistant', '$2y$10$oWQcNRH6GBUhE1cpyJLt9O2QtyKyxteucElfRHI68254n6o9kfJuq', '2026-01-24 04:58:13');
+(3, 'RAN', 'Mia', 'mialisoa3@gmail.com', 'admin', '$2y$10$KM9hpxcMluXEEv88sUUFTu3MrPSuPxhEAa73y4ttBKRFeUmcvIQ4u', '2026-01-14 07:07:44'),
+(6, 'COO', 'Bee', 'alienor.grandemange@hotmail.fr', 'assistant', '$2y$10$KM9hpxcMluXEEv88sUUFTu3MrPSuPxhEAa73y4ttBKRFeUmcvIQ4u', '2026-01-24 04:58:13');
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

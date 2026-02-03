@@ -1,6 +1,8 @@
 <?php
-session_start();
-require "config.php";
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+require_once "config.php";
 
 if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
     exit("<p style='color:red;'>Accès refusé</p>");

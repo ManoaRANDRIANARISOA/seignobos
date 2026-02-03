@@ -176,7 +176,51 @@ if(!empty($answers)){
     $stmt = $pdo->prepare($sql);
     $stmt->execute(array_values($answers));
 }
-
-echo "<p style='color:green;'>✅ Formulaire enregistré !</p>";
-echo "<a href='generate_form.php?id=$project_id'>← Retour</a>";
 ?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enregistrement réussi</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Poppins', Arial, sans-serif; background: #f0f2f5; padding: 20px; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .container { max-width: 450px; width: 100%; background: #fff; padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); text-align: center; }
+        .success-icon { font-size: 70px; color: #2ecc71; margin-bottom: 25px; animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        h1 { color: #2c3e50; margin: 0 0 10px; font-size: 26px; font-weight: 700; }
+        p { color: #7f8c8d; margin-bottom: 30px; font-size: 15px; line-height: 1.6; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 28px; background: linear-gradient(135deg, #f5a623, #f76b1c); color: #fff; border: none; border-radius: 50px; font-size: 16px; text-decoration: none; transition: all 0.3s ease; font-weight: 600; box-shadow: 0 4px 15px rgba(247, 107, 28, 0.3); }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(247, 107, 28, 0.4); filter: brightness(1.05); }
+        .btn:active { transform: translateY(0); }
+        
+        .btn-secondary { background: #fff; color: #555; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .btn-secondary:hover { background: #f9f9f9; box-shadow: 0 4px 8px rgba(0,0,0,0.1); color: #333; }
+
+        .actions-row { display: flex; flex-direction: column; gap: 15px; align-items: center; width: 100%; }
+        @media (min-width: 500px) { .actions-row { flex-direction: row; justify-content: center; } }
+        
+        @keyframes popIn {
+            0% { transform: scale(0) rotate(-45deg); opacity: 0; }
+            70% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon"><i class="fas fa-check-circle"></i></div>
+        <h1>Succès !</h1>
+        <p>Votre formulaire a été enregistré avec succès.<br>Vous pouvez maintenant en saisir un nouveau.</p>
+        
+        <div class="actions-row">
+            <a href="generate_form.php?id=<?= $project_id ?>" class="btn">
+                <i class="fas fa-plus"></i> Saisir un autre formulaire
+            </a>
+            <a href="ongoing_projects_page.php" class="btn btn-secondary">
+                <i class="fas fa-list"></i> Projets en cours
+            </a>
+        </div>
+    </div>
+</body>
+</html>

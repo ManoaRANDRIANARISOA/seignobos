@@ -1,341 +1,516 @@
 <?php
+include 'layout_header.php';
 require 'config.php';
 
-/* ===============================
-   1. ID PROJET
-=============================== */
-$project_id = intval($_GET['project_id'] ?? $_GET['id'] ?? $_POST['project_id'] ?? 0);
-if ($project_id <= 0) exit('Projet invalide');
+// Check if project ID is provided
+if (!isset($_GET['id'])) {
+    echo "<div class='content'><h2>Erreur</h2><p>Projet non spécifié.</p><a href='projects_list_page.php' class='btn'>Retour à la liste</a></div>";
+    include 'layout_footer.php';
+    exit;
+}
 
-$table_name = "project_" . $project_id;
+$project_id = intval($_GET['id']);
 
-/* ===============================
-   2. INFOS PROJET
-=============================== */
-$stmt = $pdo->prepare("SELECT project_name, project_description, created_at FROM projects WHERE id=?");
+// Fetch project details
+$stmt = $pdo->prepare("SELECT * FROM projects WHERE id = ?");
 $stmt->execute([$project_id]);
 $project = $stmt->fetch(PDO::FETCH_ASSOC);
-if (!$project) exit('Projet introuvable');
 
-/* ===============================
-   3. COLONNES
-=============================== */
-$cols = $pdo->query("SHOW COLUMNS FROM `$table_name`")->fetchAll(PDO::FETCH_COLUMN);
-if (!$cols) exit('Aucune donnée');
-
-/* ===============================
-   4. TRI
-=============================== */
-$order_by = $_GET['order_by'] ?? '';
-$order_dir = ($_GET['order_dir'] ?? 'ASC') === 'ASC' ? 'ASC' : 'DESC';
-if ($order_by && !in_array($order_by, $cols)) $order_by = '';
-
-$order_sql = 'id';
-if ($order_by) {
-    $order_sql = "
-        CASE
-            WHEN `$order_by` REGEXP '^[0-9]+$' THEN CAST(`$order_by` AS UNSIGNED)
-            ELSE `$order_by`
-        END
-    ";
+if (!$project) {
+    echo "<div class='content'><h2>Erreur</h2><p>Projet introuvable.</p><a href='projects_list_page.php' class='btn'>Retour à la liste</a></div>";
+    include 'layout_footer.php';
+    exit;
 }
 
-/* ===============================
-   5. RECHERCHE
-=============================== */
-$where = '';
-$params = [];
-$search = trim($_GET['search'] ?? '');
-if ($search !== '') {
-    $conditions = [];
-    foreach ($cols as $c) {
-        $conditions[] = "`$c` LIKE ?";
-        $params[] = "%$search%";
+// Decode form_data to get columns
+$form_data = json_decode($project['form_data'], true);
+if (!is_array($form_data)) $form_data = [];
+
+// Get all possible columns from form_data
+$columns = [];
+foreach ($form_data as $field) {
+    $col_name = preg_replace('/[^a-zA-Z0-9_]/', '_', $field['name']);
+    $columns[] = $col_name;
+    if (!empty($field['allowOther'])) {
+        $columns[] = $col_name . "_other";
     }
-    $where = 'WHERE ' . implode(' OR ', $conditions);
 }
 
-/* ===============================
-   6. PAGINATION
-=============================== */
-$limit = 200;
-$page = max(1, intval($_GET['page'] ?? 1));
-$offset = ($page - 1) * $limit;
+// Handle reordering via GET parameter
+$current_order = $columns;
+if (isset($_GET['columns_order'])) {
+    $decoded_order = json_decode($_GET['columns_order'], true);
+    if (is_array($decoded_order)) {
+        $valid_order = array_intersect($decoded_order, $columns);
+        $missing = array_diff($columns, $valid_order);
+        $current_order = array_merge($valid_order, $missing);
+    }
+}
 
-$sql = "SELECT * FROM `$table_name` $where ORDER BY $order_sql $order_dir LIMIT $limit OFFSET $offset";
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// Handle Sorting
+$sort_by = $_GET['sort'] ?? null;
+$order = strtoupper($_GET['order'] ?? 'ASC');
+if (!in_array($order, ['ASC', 'DESC'])) $order = 'ASC';
 
-/* ===============================
-   7. ORDRE DES COLONNES
-=============================== */
-$columns_order = json_decode($_GET['columns_order'] ?? json_encode($cols), true) ?: $cols;
+// Validate sort_by
+if ($sort_by && !in_array($sort_by, $current_order) && $sort_by !== 'id' && $sort_by !== 'submitted_at') {
+    $sort_by = null;
+}
+
+// Fetch data from project table
+$table_name = "project_" . $project_id;
+$data = [];
+$error_msg = "";
+
+try {
+    $checkTable = $pdo->query("SHOW TABLES LIKE '$table_name'")->rowCount() > 0;
+    if ($checkTable) {
+        $sql = "SELECT * FROM `$table_name`";
+        if ($sort_by) {
+            $sql .= " ORDER BY `$sort_by` $order";
+        } else {
+            $sql .= " ORDER BY submitted_at DESC";
+        }
+        $data = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        $error_msg = "La table de données pour ce projet n'existe pas encore.";
+    }
+} catch (Exception $e) {
+    $error_msg = "Erreur lors de la récupération des données : " . $e->getMessage();
+}
+
 ?>
 
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><?= htmlspecialchars($project['project_name']) ?></title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
 <style>
-:root{
-    --orange:#f76b1c;
-    --orange-light:#f5a623;
-    --bg:#f4f6f8;
-}
-
-/* GLOBAL */
-body{
-    font-family: 'Poppins', sans-serif;
-    background: var(--bg);
-    margin:0;
-    padding:20px;
-    color: #333;
-}
-h1{ color:var(--orange); margin-bottom:5px; font-weight: 600; }
-p{ color:#555; }
-
-/* BACK BUTTON */
-.back-btn {
-    display: inline-flex;
+/* Custom Styles for this page to look professional */
+.project-header {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    color: #555;
+    margin-bottom: 30px;
     background: #fff;
-    padding: 8px 15px;
-    border-radius: 8px;
-    font-weight: 500;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.project-title h1 {
+    margin: 0;
+    font-size: 24px;
+    background: linear-gradient(135deg, #f5a623, #f76b1c);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.action-bar {
+    display: flex;
+    gap: 15px;
     margin-bottom: 20px;
-    transition: 0.3s;
-}
-.back-btn:hover {
-    color: var(--orange);
-    transform: translateX(-5px);
+    flex-wrap: wrap;
+    justify-content: space-between; /* To push export buttons to right if added */
 }
 
-/* CARD */
-.card{
-    background:#fff;
-    padding:25px;
-    border-radius:14px;
-    box-shadow:0 6px 20px rgba(0,0,0,.08);
-    margin-bottom:20px;
+.action-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
-/* SEARCH */
-.search-bar{
-    display:flex;
-    flex-wrap:wrap;
-    gap:10px;
-    align-items: center;
-}
-.search-bar input{
-    padding:10px 15px;
-    border-radius:8px;
-    border:1px solid #ccc;
-    min-width:250px;
-    font-family: 'Poppins', sans-serif;
-}
-.search-bar button{
-    background: linear-gradient(135deg, var(--orange-light), var(--orange));
-    color:#fff;
-    border:none;
-    border-radius:8px;
-    padding:10px 20px;
-    cursor:pointer;
-    font-family: 'Poppins', sans-serif;
-    font-weight: 500;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    transition: 0.3s;
-}
-.search-bar button:hover{ opacity: 0.9; transform: translateY(-2px); }
-
-/* ACTIONS */
-.actions{
-    display:flex;
-    flex-wrap:wrap;
-    gap:10px;
-    margin:15px 0;
-}
-.actions button{
+.btn-action {
     background: #fff;
     border: 1px solid #ddd;
     color: #555;
-    border-radius:8px;
-    padding:8px 16px;
-    cursor:pointer;
-    font-family: 'Poppins', sans-serif;
-    display: inline-flex;
+    padding: 8px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    display: flex;
     align-items: center;
     gap: 8px;
-    transition: 0.3s;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    font-size: 14px;
 }
-.actions button:hover{ background: #f9f9f9; color: var(--orange); }
 
-.actions button[type="submit"]{
-    background: linear-gradient(135deg, var(--orange-light), var(--orange));
-    color: #fff;
+.btn-action:hover {
+    background: #f9f9f9;
+    border-color: #bbb;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #f5a623, #f76b1c);
+    color: white;
     border: none;
-    font-weight: 500;
 }
-.actions button[type="submit"]:hover{ opacity: 0.9; color: #fff; }
 
-/* TABLE */
-.table-wrapper{
-    overflow-x:auto;
+.btn-primary:hover {
+    filter: brightness(1.1);
+    color: white;
+}
+
+.table-container {
+    background: white;
     border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    overflow: hidden; /* For rounded corners */
 }
-table{
-    width:100%;
-    border-collapse:collapse;
-    background:#fff;
+
+.data-table-wrapper {
+    overflow-x: auto;
+    width: 100%;
 }
-th,td{
-    padding:12px 15px;
-    border:1px solid #eee;
-    font-size:14px;
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px; /* Force scroll on small screens */
 }
-th{
-    background: linear-gradient(135deg, var(--orange-light), var(--orange));
-    color:#fff;
-    position:sticky;
-    top:0;
+
+.data-table th {
+    background: #f8f9fa;
+    color: #444;
+    font-weight: 600;
+    padding: 15px;
+    border-bottom: 2px solid #eee;
+    text-align: center; /* Centered headers as requested implicitly by layout */
+    vertical-align: top;
+    position: sticky;
+    top: 0;
     z-index: 10;
+    min-width: 180px;
 }
-th .th-content{
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-}
-th .controls{
-    display:flex;
-    gap:4px;
-    flex-wrap:wrap;
-}
-.orderBtn{
-    background:rgba(255,255,255,.2);
-    color:#fff;
-    text-decoration:none;
-    padding:4px 6px;
-    border-radius:4px;
-    font-size:12px;
-    transition: 0.2s;
-}
-.orderBtn:hover { background: rgba(255,255,255,0.4); }
 
-td img{ max-width:120px; border-radius:6px }
-
-/* MOBILE */
-@media(max-width:768px){
-    h1{ font-size:20px }
-    th,td{ font-size:12px }
+.th-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center everything */
+    gap: 8px;
 }
+
+.col-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+/* Visibility Toggle below title */
+.visibility-toggle {
+    font-size: 12px;
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    margin-bottom: 5px;
+}
+
+/* Controls Container */
+.col-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #fff;
+    padding: 6px 10px;
+    border-radius: 20px; /* Rounded pill shape */
+    border: 1px solid #eee;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    margin-bottom: 5px;
+}
+
+.control-btn {
+    border: none;
+    background: transparent;
+    color: #999;
+    cursor: pointer;
+    padding: 2px 5px;
+    transition: color 0.2s;
+    font-size: 14px; /* Slightly larger icons */
+}
+
+.control-btn:hover {
+    color: #f5a623;
+}
+
+.control-btn.active {
+    color: #f5a623;
+    font-weight: bold;
+}
+
+.separator {
+    width: 1px;
+    height: 16px;
+    background: #ddd;
+    margin: 0 2px;
+}
+
+/* Color Picker Centered and Slightly Larger */
+.color-picker-wrapper {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.color-picker {
+    width: 40px; /* Agrandit légèrement */
+    height: 25px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background: none;
+}
+
+.data-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+    color: #555;
+    vertical-align: middle;
+}
+
+.data-table tr:hover td {
+    background-color: #fcfcfc;
+}
+
+.data-table tr:last-child td {
+    border-bottom: none;
+}
+
 </style>
-</head>
 
-<body>
-
-<a href="dashboard.php" class="back-btn"><i class="fas fa-arrow-left"></i> Retour au tableau de bord</a>
-
-<div class="card">
-    <h1><?= htmlspecialchars($project['project_name']) ?></h1>
-    <p><?= nl2br(htmlspecialchars($project['project_description'])) ?></p>
-</div>
-
-<div class="card">
-<form method="get" class="search-bar">
-    <input type="hidden" name="project_id" value="<?= $project_id ?>">
-    <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Rechercher...">
-    <button type="submit"><i class="fas fa-search"></i> Rechercher</button>
-</form>
-</div>
-
-<form method="post" action="generate_draft.php" id="draftForm" class="card">
-<input type="hidden" name="project_id" value="<?= $project_id ?>">
-<input type="hidden" name="columns_order" id="columns_order" value='<?= htmlspecialchars(json_encode($columns_order)) ?>'>
-
-<div class="actions">
-    <button type="button" id="selectAllColsBtn"><i class="fas fa-columns"></i> Colonnes</button>
-    <button type="button" id="selectAllRowsBtn"><i class="fas fa-list-ol"></i> Lignes</button>
-    <button type="submit"><i class="fas fa-file-word"></i> Générer Word</button>
-</div>
-
-<div class="table-wrapper">
-<table id="dataTable">
-<thead>
-<tr>
-<th><i class="fas fa-check-square"></i></th>
-<?php foreach ($columns_order as $c): ?>
-<th>
-<div class="th-content">
-    <label>
-        <input type="checkbox" name="columns[]" value="<?= htmlspecialchars($c) ?>" checked>
-        <?= strtoupper(htmlspecialchars($c)) ?>
-    </label>
-    <div class="controls">
-        <a href="#" class="moveLeft orderBtn" data-col="<?= $c ?>"><i class="fas fa-arrow-left"></i></a>
-        <a href="#" class="moveRight orderBtn" data-col="<?= $c ?>"><i class="fas fa-arrow-right"></i></a>
-        <input type="color" name="color_<?= htmlspecialchars($c) ?>" value="#000000" title="Changer la couleur">
-        <a href="?project_id=<?= $project_id ?>&order_by=<?= $c ?>&order_dir=ASC" class="orderBtn" title="Trier Asc"><i class="fas fa-sort-up"></i></a>
-        <a href="?project_id=<?= $project_id ?>&order_by=<?= $c ?>&order_dir=DESC" class="orderBtn" title="Trier Desc"><i class="fas fa-sort-down"></i></a>
+<div class="project-header">
+    <div class="project-title">
+        <h1><?= htmlspecialchars($project['project_name']) ?></h1>
+        <span style="font-size: 13px; color: #888;">ID: <?= $project['id'] ?> | Créé le: <?= date('d/m/Y', strtotime($project['created_at'])) ?></span>
+    </div>
+    <div class="action-group">
+        <button type="submit" form="projectForm" class="btn-action">
+            <i class="fas fa-file-word"></i> Exporter Word
+        </button>
+        <a href="edit_project.php?id=<?= $project_id ?>" class="btn-action btn-primary">
+            <i class="fas fa-edit"></i> Modifier structure
+        </a>
     </div>
 </div>
-</th>
-<?php endforeach; ?>
-</tr>
-</thead>
 
-<tbody>
-<?php foreach ($rows as $row): ?>
-<tr>
-<td><input type="checkbox" class="rowCheckbox" name="selected_rows[]" value="<?= $row['id'] ?>"></td>
-<?php foreach ($columns_order as $c): ?>
-<td data-col="<?= htmlspecialchars($c) ?>">
-<?php
-$val = $row[$c] ?? '';
-$json = json_decode($val,true);
-if(is_array($json)) echo htmlspecialchars(implode(', ',$json));
-elseif(preg_match('/\.(jpg|png|jpeg|gif|webp)$/i',$val) && file_exists($val))
-    echo "<img src='".htmlspecialchars($val)."'>";
-else echo htmlspecialchars($val);
-?>
-</td>
-<?php endforeach; ?>
-</tr>
-<?php endforeach; ?>
-</tbody>
-</table>
+<?php if ($error_msg): ?>
+    <div style="background: #fee; color: #c0392b; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #f5c6cb;">
+        <i class="fas fa-exclamation-circle"></i> <?= htmlspecialchars($error_msg) ?>
+    </div>
+<?php endif; ?>
+
+<div class="action-bar">
+    <div class="action-group">
+        <button id="selectAllColsBtn" class="btn-action"><i class="far fa-check-square"></i> Tout sélectionner (Colonnes)</button>
+        <button id="selectAllRowsBtn" class="btn-action"><i class="far fa-check-square"></i> Tout sélectionner (Lignes)</button>
+    </div>
+    <div class="action-group">
+        <a href="projects_list_page.php" class="btn-action"><i class="fas fa-arrow-left"></i> Retour liste</a>
+    </div>
+</div>
+
+<!-- Hidden input to store current order for JS -->
+<form id="projectForm" action="generate_draft.php" method="POST" target="_blank">
+    <input type="hidden" name="project_id" value="<?= $project_id ?>">
+    <input type="hidden" id="columns_order" name="columns_order" value="<?= htmlspecialchars(json_encode($current_order)) ?>">
+
+    <div class="table-container">
+    <div class="data-table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 50px; min-width: 50px; text-align: center;">
+                        <input type="checkbox" id="checkAllRows" style="transform: scale(1.2);">
+                    </th>
+                    <?php foreach ($current_order as $col): ?>
+                        <th data-col="<?= $col ?>">
+                            <div class="th-content">
+                                <!-- 1. Nom de la colonne -->
+                                <div class="col-title"><?= htmlspecialchars($col) ?></div>
+                                
+                                <!-- 2. Checkbox Visible -->
+                                <label class="visibility-toggle" title="Inclure cette colonne dans l'exportation Word">
+                                    <input type="checkbox" name="columns[]" value="<?= $col ?>" checked> Exporter
+                                </label>
+
+                                <!-- 3. Signes d'organisation (Tri / Déplacement) -->
+                                <div class="col-controls">
+                                    <!-- Sort Controls -->
+                                    <a href="?id=<?= $project_id ?>&sort=<?= $col ?>&order=ASC&columns_order=<?= urlencode(json_encode($current_order)) ?>" 
+                                       class="control-btn <?= ($sort_by === $col && $order === 'ASC') ? 'active' : '' ?>" title="Trier croissant">
+                                        <i class="fas fa-arrow-up"></i>
+                                    </a>
+                                    <a href="?id=<?= $project_id ?>&sort=<?= $col ?>&order=DESC&columns_order=<?= urlencode(json_encode($current_order)) ?>" 
+                                       class="control-btn <?= ($sort_by === $col && $order === 'DESC') ? 'active' : '' ?>" title="Trier décroissant">
+                                        <i class="fas fa-arrow-down"></i>
+                                    </a>
+                                    
+                                    <div class="separator"></div>
+
+                                    <!-- Move Controls -->
+                                    <button class="control-btn moveLeft" data-col="<?= $col ?>" title="Déplacer à gauche">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                    <button class="control-btn moveRight" data-col="<?= $col ?>" title="Déplacer à droite">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </div>
+
+                                <!-- 4. Couleur centrée et agrandie -->
+                                <div class="color-picker-wrapper">
+                                    <input type="color" name="color_<?= $col ?>" class="color-picker" title="Changer couleur texte">
+                                </div>
+                            </div>
+                        </th>
+                    <?php endforeach; ?>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($data)): ?>
+                    <tr>
+                        <td colspan="<?= count($current_order) + 1 ?>" style="text-align: center; padding: 40px; color: #888;">
+                            <i class="fas fa-inbox" style="font-size: 40px; margin-bottom: 10px; display: block;"></i>
+                            Aucune donnée enregistrée pour ce projet.
+                        </td>
+                    </tr>
+                <?php else: ?>
+                    <?php foreach ($data as $row): ?>
+                        <tr>
+                            <td style="text-align: center;">
+                                <input type="checkbox" name="selected_rows[]" class="rowCheckbox" value="<?= $row['id'] ?>" style="transform: scale(1.2);">
+                            </td>
+                            <?php foreach ($current_order as $col): ?>
+                                <td data-col="<?= $col ?>">
+                                    <?php 
+                                        $val = $row[$col] ?? '';
+                                        // Detect file paths
+                                        if (strpos($val, 'uploads/') === 0 || strpos(strtolower($col), 'upload') !== false || strpos(strtolower($col), 'image') !== false) {
+                                            if ($val) {
+                                                echo "<a href='" . htmlspecialchars($val) . "' target='_blank' style='color: #3498db; text-decoration: none; font-weight: 500;'><i class='fas fa-file-download'></i> Voir fichier</a>";
+                                            }
+                                        } else {
+                                            $displayVal = strlen($val) > 100 ? substr($val, 0, 100) . '...' : $val;
+                                            echo htmlspecialchars($displayVal); 
+                                        }
+                                    ?>
+                                </td>
+                            <?php endforeach; ?>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
 </div>
 </form>
 
 <script>
-// (JS IDENTIQUE – NON MODIFIÉ)
-document.getElementById('selectAllColsBtn').onclick=()=> {
-    const c=[...document.querySelectorAll('input[name="columns[]"]')];
-    const a=c.every(x=>x.checked);
-    c.forEach(x=>x.checked=!a);
-};
-document.getElementById('selectAllRowsBtn').onclick=()=> {
-    const c=[...document.querySelectorAll('.rowCheckbox')];
-    const a=c.every(x=>x.checked);
-    c.forEach(x=>x.checked=!a);
-};
-document.querySelectorAll('input[type=color]').forEach(p=>{
-    p.oninput=()=> {
-        const col=p.name.replace('color_','');
-        document.querySelectorAll(`td[data-col="${col}"]`).forEach(td=>td.style.color=p.value);
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // Select All Columns Checkbox
+    const selectAllColsBtn = document.getElementById('selectAllColsBtn');
+    if (selectAllColsBtn) {
+        selectAllColsBtn.onclick = () => {
+            const c = [...document.querySelectorAll('input[name="columns[]"]')];
+            if (c.length === 0) return;
+            const a = c.every(x => x.checked);
+            c.forEach(x => x.checked = !a);
+        };
     }
+
+    // Select All Rows Checkbox (Button)
+    const selectAllRowsBtn = document.getElementById('selectAllRowsBtn');
+    if (selectAllRowsBtn) {
+        selectAllRowsBtn.onclick = () => {
+            const c = [...document.querySelectorAll('.rowCheckbox')];
+            if (c.length === 0) return;
+            const a = c.every(x => x.checked);
+            c.forEach(x => x.checked = !a);
+        };
+    }
+    
+    // Select All Rows (Header Checkbox)
+    const checkAllRows = document.getElementById('checkAllRows');
+    if (checkAllRows) {
+        checkAllRows.onclick = () => {
+            const c = [...document.querySelectorAll('.rowCheckbox')];
+            c.forEach(x => x.checked = checkAllRows.checked);
+        };
+    }
+
+    // Color Picker
+    document.querySelectorAll('input[type=color]').forEach(p => {
+        p.oninput = () => {
+            const col = p.name.replace('color_', '');
+            document.querySelectorAll(`td[data-col="${col}"]`).forEach(td => td.style.color = p.value);
+            // Color title too
+            const title = document.querySelector(`th[data-col="${col}"] .col-title`);
+            if (title) title.style.color = p.value;
+        }
+    });
+
+    // Export Validation
+    const projectForm = document.getElementById('projectForm');
+    if (projectForm) {
+        projectForm.addEventListener('submit', function(e) {
+            const checkedRows = document.querySelectorAll('input[name="selected_rows[]"]:checked').length;
+            const checkedCols = document.querySelectorAll('input[name="columns[]"]:checked').length;
+            
+            if (checkedRows === 0) {
+                e.preventDefault();
+                alert("⚠️ Aucune ligne sélectionnée.\nVeuillez cocher les cases à gauche des lignes que vous souhaitez exporter.");
+                return;
+            }
+            
+            if (checkedCols === 0) {
+                e.preventDefault();
+                alert("⚠️ Aucune colonne visible.\nVeuillez cocher 'Visible' sur au moins une colonne pour l'exportation.");
+                return;
+            }
+        });
+    }
+
+    // Column Reordering
+    document.querySelectorAll('.moveLeft, .moveRight').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const colName = this.dataset.col;
+            const direction = this.classList.contains('moveLeft') ? -1 : 1;
+            
+            // Get current order from hidden input
+            let orderInput = document.getElementById('columns_order');
+            if (!orderInput) return;
+            
+            let currentOrder = [];
+            try {
+                currentOrder = JSON.parse(orderInput.value);
+            } catch(e) {
+                console.error("Erreur parsing JSON", e);
+                return;
+            }
+            
+            const index = currentOrder.indexOf(colName);
+            if (index === -1) return;
+            
+            const newIndex = index + direction;
+            
+            // Check bounds
+            if (newIndex < 0 || newIndex >= currentOrder.length) return;
+            
+            // Swap
+            [currentOrder[index], currentOrder[newIndex]] = [currentOrder[newIndex], currentOrder[index]];
+            
+            // Reload page with new order
+            // We must preserve current sort params if any
+            const url = new URL(window.location.href);
+            url.searchParams.set('columns_order', JSON.stringify(currentOrder));
+            window.location.href = url.toString();
+        });
+    });
 });
 </script>
 
-</body>
-</html>
+<?php include 'layout_footer.php'; ?>

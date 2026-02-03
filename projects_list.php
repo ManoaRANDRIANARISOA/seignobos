@@ -45,10 +45,20 @@ $projects = $pdo->query("SELECT id, project_name, project_description, statut, c
     </td>
     <td><?= $p['created_at'] ?></td>
     <td>
-        <a href="generate_form.php?id=<?= $p['id'] ?>" target="_blank">👁 Remplir</a> |
-        <a href="edit_project.php?id=<?= $p['id'] ?>">✏️ Modifier</a> |
-        <button onclick="deleteProject(<?= $p['id'] ?>)">🗑 Supprimer</button> |
-        <a href="view_project.php?id=<?= $p['id'] ?>">📊 Afficher</a>
+        <div class="action-buttons">
+            <a href="generate_form.php?id=<?= $p['id'] ?>" target="_blank" class="btn-action btn-fill" title="Remplir le formulaire">
+                <i class="fa-solid fa-pen-to-square"></i> Remplir
+            </a>
+            <a href="edit_project.php?id=<?= $p['id'] ?>" class="btn-action btn-edit" title="Modifier le projet">
+                <i class="fa-solid fa-gear"></i> Modifier
+            </a>
+            <button onclick="deleteProject(<?= $p['id'] ?>)" class="btn-action btn-delete" title="Supprimer le projet">
+                <i class="fa-solid fa-trash-can"></i> Supprimer
+            </button>
+            <a href="view_project.php?id=<?= $p['id'] ?>" class="btn-action btn-view" title="Voir les données">
+                <i class="fa-solid fa-chart-simple"></i> Afficher
+            </a>
+        </div>
     </td>
 </tr>
 <?php endforeach; ?>
