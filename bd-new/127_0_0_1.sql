@@ -187,8 +187,6 @@ CREATE TABLE IF NOT EXISTS `users` (
   `password` varchar(255) NOT NULL,
   `reset_code` varchar(10) DEFAULT NULL,
   `reset_expires_at` datetime DEFAULT NULL,
-  `reset_code` varchar(10) DEFAULT NULL,
-  `reset_expires_at` datetime DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `unique_username` (`username`),
