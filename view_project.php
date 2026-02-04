@@ -312,6 +312,14 @@ try {
     </div>
 </div>
 
+<div class="search-bar-container" style="margin-bottom: 15px;">
+    <div style="position: relative;">
+        <i class="fas fa-search" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #aaa;"></i>
+        <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Rechercher des mots clés..." 
+        style="width: 100%; padding: 12px 15px 12px 40px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+    </div>
+</div>
+
 <!-- Hidden input to store current order for JS -->
 <form id="projectForm" action="generate_draft.php" method="POST" target="_blank">
     <input type="hidden" name="project_id" value="<?= $project_id ?>">
@@ -389,7 +397,12 @@ try {
                                         // Detect file paths
                                         if (strpos($val, 'uploads/') === 0 || strpos(strtolower($col), 'upload') !== false || strpos(strtolower($col), 'image') !== false) {
                                             if ($val) {
-                                                echo "<a href='" . htmlspecialchars($val) . "' target='_blank' style='color: #3498db; text-decoration: none; font-weight: 500;'><i class='fas fa-file-download'></i> Voir fichier</a>";
+                                                $ext = strtolower(pathinfo($val, PATHINFO_EXTENSION));
+                                                if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                                                    echo "<a href='" . htmlspecialchars($val) . "' target='_blank'><img src='" . htmlspecialchars($val) . "' alt='Image' style='max-width: 80px; max-height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;'></a>";
+                                                } else {
+                                                    echo "<a href='" . htmlspecialchars($val) . "' target='_blank' style='color: #3498db; text-decoration: none; font-weight: 500;'><i class='fas fa-file-download'></i> Voir fichier</a>";
+                                                }
                                             }
                                         } else {
                                             $displayVal = strlen($val) > 100 ? substr($val, 0, 100) . '...' : $val;
@@ -440,6 +453,30 @@ document.addEventListener('DOMContentLoaded', function() {
             c.forEach(x => x.checked = checkAllRows.checked);
         };
     }
+
+    // Search Filter
+    window.filterTable = function() {
+        const input = document.getElementById('searchInput');
+        const filter = input.value.toLowerCase();
+        const table = document.querySelector('.data-table');
+        const trs = table.getElementsByTagName('tr');
+
+        // Start from 1 to skip header
+        for (let i = 1; i < trs.length; i++) {
+            let visible = false;
+            const tds = trs[i].getElementsByTagName('td');
+            for (let j = 0; j < tds.length; j++) {
+                if (tds[j]) {
+                    const txtValue = tds[j].textContent || tds[j].innerText;
+                    if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                        visible = true;
+                        break;
+                    }
+                }
+            }
+            trs[i].style.display = visible ? "" : "none";
+        }
+    };
 
     // Color Picker
     document.querySelectorAll('input[type=color]').forEach(p => {

@@ -141,8 +141,8 @@ button[type="submit"]:hover {
     filter: brightness(1.05);
 }
 .checkbox-group, .radio-group {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 10px;
     background: #f9f9f9;
     padding: 15px;
@@ -156,6 +156,15 @@ button[type="submit"]:hover {
     align-items: center;
     gap: 10px;
     cursor: pointer;
+    background: white;
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #eee;
+    transition: all 0.2s;
+}
+.checkbox-group label:hover, .radio-group label:hover {
+    border-color: #f5a623;
+    background: #fffcf5;
 }
 .other-input { 
     display:none; 
